@@ -1,85 +1,95 @@
 package converter
 
-import kotlin.math.pow
+import java.math.BigInteger
 
 enum class UserCommand(val command: String){
-    FROM("/from"),
-    TO("/to"),
-    EXIT("/exit")
+    /*FROM("/from"),
+    TO("/to"),*/
+    EXIT("/exit"),
+    BACK("/back")
 }
 
 fun main() = work()
 
 fun work() {
     while (true) {
-        println("Do you want to convert /from decimal or /to decimal? (To quit type /exit)")
-        when (readLine()!!) {
-            UserCommand.FROM.command -> decimalConversion()
-            UserCommand.TO.command -> fromBaseToDecimalConversion()
-            UserCommand.EXIT.command -> break
-            else -> continue
+        print("Enter two numbers in format: {source base} {target base} (To quit type /exit) ")
+        var input = readLine()!!
+        if (input == UserCommand.EXIT.command) break
+        val (sourceBase, targetBase) = input.split(" ", limit = 2)
+
+        while (true) {
+            print("Enter number in base $sourceBase to convert to base $targetBase (To go back type /back) ")
+            input = readLine()!!
+            if (input == UserCommand.BACK.command) break
+            val number = input
+            val result = if (sourceBase == "10") decimalToRadix(decimal = number.toBigInteger(), radix = targetBase.toInt()) else {
+                val aux = radixToDecimal(sourceNumber = number, radix = sourceBase.toInt())
+                decimalToRadix(decimal = aux.toBigInteger(), radix = targetBase.toInt())
+            }
+            println("Conversion result: $result")
         }
         println()
     }
 }
 
-fun fromBaseToDecimalConversion() {
+/*fun fromBaseToDecimalConversion() {
     print("Enter source number: ")
     val sourceNumber = readLine()!!
     print("Enter source base: ")
     val base = readLine()!!.toIntOrNull() ?: 0
     val result = radixToDecimal(sourceNumber = sourceNumber, radix = base)
     println("Conversion to decimal result: $result")
-}
+}*/
 
 /* Transforms the given number to a base */
 fun radixToDecimal(sourceNumber: String, radix: Int): String {
-    var result = 0.0
+    var result = BigInteger.ZERO
     for ((exponent, i) in (sourceNumber.length - 1 downTo 0).withIndex()) { // check the number in reverse
-        val x: Double = hexToDecimal(number = sourceNumber[i])
-        result += x * radix.toDouble().pow(exponent)
+        val x = letterToDecimal(number = sourceNumber[i])
+        result += x * radix.toBigInteger().pow(exponent)
     }
-    return result.toInt().toString()
+    return result.toString()
 }
 
 /* Transforms the given string to decimal value if it's a hex letter */
-fun hexToDecimal(number: Char): Double {
-    val hexLetters = mapOf("A" to "10", "B" to "11", "C" to "12", "D" to "13", "E" to "14", "F" to "15")
-    return if (number.isDigit()) {
-        number.toString().toDouble()
-    } else if(hexLetters.containsKey(number.toString().uppercase())){
-        hexLetters[number.uppercase()]?.toDouble() ?: number.toString().toDouble()
-    } else {
-        number.toString().toDouble()
-    }
+fun letterToDecimal(number: Char): BigInteger {
+    val firstNumberNeeded = 10 // First numbers that needs letter representation
+    val startOfLetters = 65 // Ascii value for letter "A"
+    return if (number.isDigit()) number.toString().toBigInteger() // If char is a digit return the same
+    else (number.uppercaseChar().code - startOfLetters + firstNumberNeeded).toBigInteger() //
+
 }
 
 /* Aks user for decimal and the objective base */
-fun decimalConversion() {
+/*fun decimalConversion() {
     print("Enter number in decimal system: ")
     val decimal = readLine()!!.toIntOrNull() ?: 0
     print("Enter target base: ")
     val base = readLine()!!.toIntOrNull() ?: 0
     val result = decimalToRadix(decimal = decimal, radix = base)
     println("Conversion result: $result")
-}
+}*/
 
 /* Transform decimal to number in given base */
-fun decimalToRadix(decimal: Int, radix: Int): String {
-    var d = decimal
+fun decimalToRadix(decimal: BigInteger, radix: Int): String {
+    var d: BigInteger = decimal
     val s = StringBuilder()
+    val base = radix.toBigInteger()
 
-    while (d >= radix) {
-        val number: String = (d % radix).toString()
-        s.append(decimalToHex(number = number))
-        d /= radix
+    while (d >= base) {
+        val number: String = (d % base).toString()
+        s.append(decimalToLetters(number = number))
+        d /= base
     }
-    s.append( decimalToHex(number = d.toString()) ) // Last remainder
+    s.append( decimalToLetters(number = d.toString()) ) // Last remainder
     return s.toString().reversed()
 }
 
-/* Check for numbers 10, 11, 12, 13, 14, 15 to change them to hexadecimal representation */
-fun decimalToHex(number: String): String {
-    val hexLetters = mapOf("10" to "A", "11" to "B", "12" to "C", "13" to "D", "14" to "E", "15" to "F")
-    return if (hexLetters.containsKey(number)) hexLetters[number] ?: number else number
+/* Changes the numbers over 10 to its letter representation */
+fun decimalToLetters(number: String): String {
+    val firstNumberNeeded = 10 // First numbers that needs letter representation
+    val startOfLetters = 65 // Ascii value for letter "A"
+    // it takes de difference between the start of letter and the objective numbers the add it to startOfLetters to get the letter needed
+    return if (number.toInt() < firstNumberNeeded) number else (number.toInt() - firstNumberNeeded + startOfLetters).toChar().toString()
 }
