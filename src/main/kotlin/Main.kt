@@ -1,6 +1,8 @@
 package converter
 
+import java.math.BigDecimal
 import java.math.BigInteger
+import java.math.RoundingMode
 
 enum class UserCommand(val command: String){
     /*FROM("/from"),
@@ -21,16 +23,58 @@ fun work() {
         while (true) {
             print("Enter number in base $sourceBase to convert to base $targetBase (To go back type /back) ")
             input = readLine()!!
-            if (input == UserCommand.BACK.command) break
-            val number = input
+            if (input == UserCommand.BACK.command) break // if command break is used, return no choose source and target base
+
+            val userNumber = input.split(".") // try to split de given number in its integer and fractional parts
+            val number = userNumber[0]
+            val fractional = if (userNumber.size > 1) userNumber[1] else ""
+
             val result = if (sourceBase == "10") decimalToRadix(decimal = number.toBigInteger(), radix = targetBase.toInt()) else {
                 val aux = radixToDecimal(sourceNumber = number, radix = sourceBase.toInt())
                 decimalToRadix(decimal = aux.toBigInteger(), radix = targetBase.toInt())
             }
-            println("Conversion result: $result")
+            val fractionalResult = if (fractional.isNotEmpty()) {
+                if (sourceBase == "10") fractionalDecimalToRadix(fractional = fractional, radix = targetBase.toInt()) else {
+                    fractionalDecimalToRadix(
+                        fractional = fractionalRadixToDecimal(fractional = fractional, radix = sourceBase.toInt()),
+                        radix = targetBase.toInt()
+                    )
+
+                }
+            } else "" // there's no fractional part
+            println("Conversion result: $result" + if (fractionalResult.isNotEmpty()) ".$fractionalResult" else "")
         }
         println()
     }
+}
+
+/* Takes a fraction part of a number in some base and transforms it to decimal base */
+fun fractionalRadixToDecimal(fractional: String, radix: Int): String {
+    var result = BigDecimal.ZERO
+    for (i in fractional.indices) {
+        val number = letterToDecimal(number = fractional[i]) // If number is a letter returns its number value
+        result += if (number.toBigDecimal() == BigDecimal.ZERO)
+            BigDecimal.ZERO
+        else
+            number.toBigDecimal() * ( BigDecimal.ONE.setScale(20) / radix.toBigDecimal().pow( i + 1 ) ) // the current value * base ^ -position without zero
+    }
+    return if (result == BigDecimal.ZERO) {
+        "00000"
+    } else {
+        result.toString().substring(2)
+    }
+}
+
+/* Takes a fraction part of a decimal number and transforms it to a given base */
+fun fractionalDecimalToRadix(fractional: String, radix: Int): String {
+    var fractionNumber = BigDecimal("0.$fractional")
+    val result = StringBuilder()
+    while (fractionNumber <= BigDecimal.ONE && result.length < 5) {
+        val integerReminder = (fractionNumber * radix.toBigDecimal()).toInt()
+        result.append(decimalToLetters(number = integerReminder.toString()))
+        fractionNumber = (fractionNumber * radix.toBigDecimal()) - integerReminder.toBigDecimal()
+    }
+    return result.toString()
 }
 
 /*fun fromBaseToDecimalConversion() {
@@ -42,7 +86,7 @@ fun work() {
     println("Conversion to decimal result: $result")
 }*/
 
-/* Transforms the given number to a base */
+/* Transforms the given number to a decimal number */
 fun radixToDecimal(sourceNumber: String, radix: Int): String {
     var result = BigInteger.ZERO
     for ((exponent, i) in (sourceNumber.length - 1 downTo 0).withIndex()) { // check the number in reverse
